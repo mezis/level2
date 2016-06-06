@@ -1,5 +1,2 @@
-require "level2/version"
+require 'active_support/cache/level2'
 
-module Level2
-  # Your code goes here...
-end
