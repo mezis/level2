@@ -7,8 +7,13 @@ hotest cached items, and a larger, slower cache for more — mimicking how
 microprocessors commonly have a small, ultrafast L1 cache and slower L2 and L3
 caches.
 
-A common idiom is to use Rails's [`memory_store`]() as the first level, and
-[`mem_cache_store`]() or [`redis_store`]() as the second.
+A common idiom is to use Rails's
+[`memory_store`](http://guides.rubyonrails.org/caching_with_rails.html#activesupport-cache-memorystore)
+as the first level, and
+[`mem_cache_store`](http://guides.rubyonrails.org/caching_with_rails.html#activesupport-cache-memcachestore)
+or
+[`redis_store`](https://github.com/redis-store/redis-store/wiki/Frameworks-Configuration)
+as the second.
 
 ## Behaviour
 
