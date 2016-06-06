@@ -1,5 +1,4 @@
-# Level2 [![Build
-Status](https://travis-ci.org/mezis/level2.svg)](https://travis-ci.org/mezis/level2) [![Gem Version](https://badge.fury.io/rb/level2.svg)](https://badge.fury.io/rb/level2)
+# Level2 [![Build Status](https://travis-ci.org/mezis/level2.svg)](https://travis-ci.org/mezis/level2) [![Gem Version](https://badge.fury.io/rb/level2.svg)](https://badge.fury.io/rb/level2)
 
 A gem for tiered Rails caching.
 
