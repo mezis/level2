@@ -51,11 +51,34 @@ Example:
 # in config/application.rb
 
 config.cache_store = :level2, 
-    :memory_store, { size: 32.megabytes },
-    :mem_cache_store, 'host1.example.org:11211'
+    L1: [
+      :memory_store, size: 32.megabytes
+    ],
+    L2: [
+      :mem_cache_store, 'host1.example.org:11211'
+    ]
 ```
 
+## Notifications
 
+Level2 enriches
+[`ActiveSupport::Notifications`](http://edgeguides.rubyonrails.org/active_support_instrumentation.html#active-support).
+
+Event payloads will include a `:level` field. On cache hits, this will indicate
+where the hit comes from; on misses, or any other event, the field may be
+present but the value is unspecified.
+
+Example:
+
+```ruby
+# in an initializer
+ActiveSupport::Notifications.subscribe 'cache_read.active_support' do |*args|
+  event = ActiveSupport::Notifications::Event.new(*args)
+  if event.payload[:hit]
+    Rails.logger.info "Hit from #{event.payload[:level]}"
+  end
+end
+```
 
 ## Development
 
