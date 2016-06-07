@@ -5,10 +5,10 @@ module ActiveSupport
     class Level2 < Store
       attr_reader :stores
 
-      def initialize(*store_options)
+      def initialize(store_options)
         @lock = Mutex.new
-        @stores = store_options.each_slice(2).map do |name,options|
-          ActiveSupport::Cache.lookup_store(name, options)
+        @stores = store_options.each_with_object({}) do |(name,options), h|
+          h[name] = ActiveSupport::Cache.lookup_store(options)
         end
         @options = {}
       end
@@ -27,6 +27,13 @@ module ActiveSupport
 
       protected
 
+      def instrument(operation, key, options = nil, &block)
+        super(operation, key, options) do |payload|
+          payload[:level] = current_level
+          block.call(payload)
+        end
+      end
+
       def read_entry(key, options)
         @lock.synchronize do
           read_entry_from(@stores, key, options)
@@ -35,7 +42,7 @@ module ActiveSupport
 
       def write_entry(key, entry, options)
         @lock.synchronize do
-          @stores.each do |store|
+          @stores.each do |name, store|
             result = store.send :write_entry, key, entry, options
             return false unless result
           end
@@ -45,7 +52,7 @@ module ActiveSupport
 
       def delete_entry(key, options)
         @lock.synchronize do
-          @stores.map { |store|
+          @stores.map { |name,store|
             store.send :delete_entry, key, options
           }.all?
         end
@@ -53,10 +60,19 @@ module ActiveSupport
 
       private
 
+      def current_level
+        Thread.current[:level2_current]
+      end
+
+      def current_level!(name)
+        Thread.current[:level2_current] = name
+      end
+
       def read_entry_from(stores, key, options)
         return if stores.empty?
 
-        store, *other_stores = stores
+        (name,store), *other_stores = stores.to_a
+        current_level! name
         entry = store.send :read_entry, key, options
         return entry if entry.present?
 

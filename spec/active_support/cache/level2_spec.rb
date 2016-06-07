@@ -5,9 +5,16 @@ require 'pry'
 describe ActiveSupport::Cache::Level2 do
   subject do
     ActiveSupport::Cache.lookup_store :level2,
-      :memory_store, { size: 10.megabytes },
-      :memory_store, { size: 5.megabytes }
+      L1: [
+        :memory_store, { size: 10.megabytes }
+      ],
+      L2: [
+        :memory_store, { size: 5.megabytes }
+      ]
   end
+
+  let(:level1) { subject.stores.values.first }
+  let(:level2) { subject.stores.values.last }
 
   it 'can be initialized' do
     expect { subject }.not_to raise_error
@@ -46,9 +53,6 @@ describe ActiveSupport::Cache::Level2 do
   end
 
   describe 'storage' do
-    let(:level1) { subject.stores.first }
-    let(:level2) { subject.stores.last }
-
     it 'writes to all stores' do
       subject.write('foo', 'bar')
       expect(level1.read('foo')).to eq('bar')
@@ -72,5 +76,45 @@ describe ActiveSupport::Cache::Level2 do
       expect(level1.read('foo')).to eq('bar2')
     end
   end
+
+  describe 'notifications' do
+    after { ActiveSupport::Notifications.unsubscribe(//) }
+    let(:events) { [] }
+
+    describe '#read' do
+      before do
+        ActiveSupport::Notifications.subscribe('cache_read.active_support') do |*args|
+          events << ActiveSupport::Notifications::Event.new(*args)
+        end
+      end
+
+      it 'notifies' do
+        subject.read('foo')
+        expect(events.length).to eq 1
+      end
+
+      context 'hits' do
+        it 'sets the :level event attribute' do
+          level2.write('foo', 'bar')
+          subject.read('foo')
+          expect(events.first.payload[:level]).to eq :L2
+        end
+      end
+    end
+
+    describe '#write' do
+      before do
+        ActiveSupport::Notifications.subscribe('cache_write.active_support') do |*args|
+          events << ActiveSupport::Notifications::Event.new(*args)
+        end
+      end
+
+      it 'notifies' do
+        subject.write('foo', 'bar')
+        expect(events.length).to eq 1
+      end
+    end
+  end
+  
 
 end
