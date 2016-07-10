@@ -4,7 +4,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 
 Gem::Specification.new do |spec|
   spec.name          = 'level2'
-  spec.version       = '0.2.1'
+  spec.version       = '0.2.2'
   spec.authors       = ['Julien Letessier']
   spec.email         = ['julien.letessier@gmail.com']
 
@@ -23,5 +23,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'guard-rspec'
   spec.add_development_dependency 'pry'
 
-  spec.add_runtime_dependency 'activesupport'
+  spec.add_runtime_dependency 'activesupport', '~> 4'
 end
