@@ -50,6 +50,12 @@ describe ActiveSupport::Cache::Level2 do
       subject.write('foo', 'bar', expires_in: 0)
       expect(subject.read('foo')).to be_nil
     end
+
+    it 'can #clear' do
+      subject.write('foo', 'bar')
+      subject.clear
+      expect(subject.read('foo')).to be_nil
+    end
   end
 
   describe 'storage' do

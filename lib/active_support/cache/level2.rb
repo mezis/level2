@@ -13,15 +13,15 @@ module ActiveSupport
         @options = {}
       end
 
-      def cleanup(options = nil)
+      def cleanup(*args)
         @lock.synchronize do
-          @stores.each { |s| s.cleanup(options) }
+          @stores.each_value { |s| s.cleanup(*args) }
         end
       end
 
-      def clear(options = nil)
+      def clear(*args)
         @lock.synchronize do
-          @stores.each { |s| s.clear(options) }
+          @stores.each_value { |s| s.clear(*args) }
         end
       end
 
