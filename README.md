@@ -50,13 +50,10 @@ Example:
 ```ruby
 # in config/application.rb
 
-config.cache_store = :level2, 
-    L1: [
-      :memory_store, size: 32.megabytes
-    ],
-    L2: [
-      :mem_cache_store, 'host1.example.org:11211'
-    ]
+config.cache_store = :level2, {
+  L1: [ :memory_store, size: 32.megabytes ],
+  L2: [ :mem_cache_store, 'host1.example.org:11211' ]
+}
 ```
 
 ## Notifications
