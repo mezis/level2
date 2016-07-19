@@ -56,6 +56,24 @@ config.cache_store = :level2, {
 }
 ```
 
+From thereon,
+
+- `Rails.cache.read` and `.fetch` will read from `L1` and fall back to `L2` if
+  the key is absent from `L1`.
+  When reading from `L2`, `L1` will get populated automatically on misses.
+- `Rails.cache.write` and `.fetch` will write to both stores.
+
+While discouraged, it is possible to write directly to a given cache level:
+
+```ruby
+Rails.cache.write('foo', 'bar', only: :L2)
+```
+
+This can be useful in cases where `L1` is a non-shared cache (e.g. in-memory
+cache) and `L2` is shared (e.g. Redis, Memcached); and you want to keep the
+ability to bust the cache manually.
+
+
 ## Notifications
 
 Level2 enriches

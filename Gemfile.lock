@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    level2 (0.2.2)
+    level2 (0.2.3)
       activesupport (~> 4)
 
 GEM

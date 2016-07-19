@@ -35,14 +35,16 @@ module ActiveSupport
       end
 
       def read_entry(key, options)
+        stores = selected_stores(options)
         @lock.synchronize do
-          read_entry_from(@stores, key, options)
+          read_entry_from(stores, key, options)
         end
       end
 
       def write_entry(key, entry, options)
+        stores = selected_stores(options)
         @lock.synchronize do
-          @stores.each do |name, store|
+          stores.each do |name, store|
             result = store.send :write_entry, key, entry, options
             return false unless result
           end
@@ -51,8 +53,9 @@ module ActiveSupport
       end
 
       def delete_entry(key, options)
+        selected_stores(options)
         @lock.synchronize do
-          @stores.map { |name,store|
+          stores.map { |name,store|
             store.send :delete_entry, key, options
           }.all?
         end
@@ -82,6 +85,13 @@ module ActiveSupport
         
         entry
       end
+
+      def selected_stores(options)
+        only = options[:only]
+        return @stores if only.nil?
+        @stores.select { |name,_| name == only }
+      end
+
     end
   end
 end

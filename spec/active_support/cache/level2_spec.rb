@@ -83,6 +83,21 @@ describe ActiveSupport::Cache::Level2 do
     end
   end
 
+  describe ':only restrictions' do
+    it 'only writes to the selected store' do
+      subject.write('foo', 'bar', only: :L2)
+      expect(level1.read('foo')).to be_nil
+      expect(level2.read('foo')).to eq('bar')
+    end
+
+    it 'only reads the selected store' do
+      level1.write('foo', 'bar1')
+      level2.write('foo', 'bar2')
+      expect(subject.read('foo', only: :L1)).to eq('bar1')
+      expect(subject.read('foo', only: :L2)).to eq('bar2')
+    end
+  end
+
   describe 'notifications' do
     after { ActiveSupport::Notifications.unsubscribe(//) }
     let(:events) { [] }
