@@ -91,8 +91,8 @@ describe ActiveSupport::Cache::Level2 do
     end
 
     it 'only reads the selected store' do
-      level1.write('foo', 'bar1')
-      level2.write('foo', 'bar2')
+      level1.write('foo', 'bar1', only: :L2)
+      level2.write('foo', 'bar2', only: :L2)
       expect(subject.read('foo', only: :L1)).to eq('bar1')
       expect(subject.read('foo', only: :L2)).to eq('bar2')
     end
@@ -118,7 +118,10 @@ describe ActiveSupport::Cache::Level2 do
         it 'sets the :level event attribute' do
           level2.write('foo', 'bar')
           subject.read('foo')
-          expect(events.first.payload[:level]).to eq :L2
+          expect(events.last.payload[:level]).to eq :L2
+
+          subject.read('foo')
+          expect(events.last.payload[:level]).to eq :L1
         end
       end
     end

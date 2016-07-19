@@ -27,10 +27,11 @@ module ActiveSupport
 
       protected
 
-      def instrument(operation, key, options = nil, &block)
+      def instrument(operation, key, options = nil)
         super(operation, key, options) do |payload|
-          payload[:level] = current_level if payload
-          block.call(payload)
+          yield(payload).tap do
+            payload[:level] = current_level if payload
+          end
         end
       end
 
