@@ -29,7 +29,7 @@ module ActiveSupport
 
       def instrument(operation, key, options = nil, &block)
         super(operation, key, options) do |payload|
-          payload[:level] = current_level
+          payload[:level] = current_level if payload
           block.call(payload)
         end
       end
