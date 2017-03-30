@@ -1,5 +1,6 @@
 require 'spec_helper'
 require 'active_support/cache/level2'
+require 'active_support/notifications'
 require 'pry'
 
 describe ActiveSupport::Cache::Level2 do

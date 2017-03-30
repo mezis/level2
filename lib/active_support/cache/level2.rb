@@ -1,5 +1,11 @@
 require 'active_support/cache'
 
+require 'active_support/version'
+if ActiveSupport::VERSION::MAJOR == 3
+  # active_support/cache actually depends on this but doesn't require it:
+  require 'securerandom'
+end
+
 module ActiveSupport
   module Cache
     class Level2 < Store
@@ -23,6 +29,11 @@ module ActiveSupport
         @lock.synchronize do
           @stores.each_value { |s| s.clear(*args) }
         end
+      end
+
+      # Rails 3 doesn't instrument by default, this overrides it
+      def self.instrument
+        true
       end
 
       protected
