@@ -1,5 +1,5 @@
 PATH
-  remote: .
+  remote: ..
   specs:
     level2 (0.2.6)
 
@@ -79,7 +79,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  activesupport
+  activesupport (~> 5)
   appraisal
   bundler
   guard-rspec
