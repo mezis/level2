@@ -12,7 +12,6 @@ module ActiveSupport
       attr_reader :stores
 
       def initialize(store_options)
-        @lock = Mutex.new
         @stores = store_options.each_with_object({}) do |(name,options), h|
           h[name] = ActiveSupport::Cache.lookup_store(options)
         end
@@ -20,15 +19,11 @@ module ActiveSupport
       end
 
       def cleanup(*args)
-        @lock.synchronize do
-          @stores.each_value { |s| s.cleanup(*args) }
-        end
+        @stores.each_value { |s| s.cleanup(*args) }
       end
 
       def clear(*args)
-        @lock.synchronize do
-          @stores.each_value { |s| s.clear(*args) }
-        end
+        @stores.each_value { |s| s.clear(*args) }
       end
 
       # Rails 3 doesn't instrument by default, this overrides it
@@ -48,29 +43,22 @@ module ActiveSupport
 
       def read_entry(key, options)
         stores = selected_stores(options)
-        @lock.synchronize do
-          read_entry_from(stores, key, options)
-        end
+        read_entry_from(stores, key, options)
       end
 
       def write_entry(key, entry, options)
         stores = selected_stores(options)
-        @lock.synchronize do
-          stores.each do |name, store|
-            result = store.send :write_entry, key, entry, options
-            return false unless result
-          end
-          true
+        stores.each do |name, store|
+          result = store.send :write_entry, key, entry, options
+          return false unless result
         end
       end
 
       def delete_entry(key, options)
         selected_stores(options)
-        @lock.synchronize do
-          stores.map { |name,store|
-            store.send :delete_entry, key, options
-          }.all?
-        end
+        stores.map { |name,store|
+          store.send :delete_entry, key, options
+        }.all?
       end
 
       private
