@@ -149,6 +149,20 @@ describe ActiveSupport::Cache::Level2 do
       end
     end
   end
+
+
+  describe '#read_multi' do
+    before do
+      subject.write('a', 'a1', only: :L1)
+      subject.write('a', 'a2', only: :L2)
+      subject.write('b', 'b1', only: :L1)
+      subject.write('c', 'c2', only: :L2)
+    end
+
+    it 'mass-reads data from each store' do
+      expect(subject.read_multi('a', 'b', 'c', 'd')).to eq('a' => 'a1', 'b' => 'b1', 'c' => 'c2')
+    end
+  end
   
   # it { binding.pry }
 end

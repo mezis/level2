@@ -26,6 +26,16 @@ module ActiveSupport
         @stores.each_value { |s| s.clear(*args) }
       end
 
+      def read_multi(*names)
+        result = {}
+        @stores.each do |_name,store|
+          data = store.read_multi(*names)
+          result.merge! data
+          names -= data.keys
+        end
+        result
+      end
+
       # Rails 3 doesn't instrument by default, this overrides it
       def self.instrument
         true
