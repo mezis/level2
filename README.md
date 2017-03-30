@@ -15,6 +15,10 @@ or
 [`redis_store`](https://github.com/redis-store/redis-store/wiki/Frameworks-Configuration)
 as the second.
 
+If your production setup has multiple Ruby processes per server, and some free
+memory on servers, it can be more sensible to run one `mem_cache_store` per
+server plus a shared one.
+
 ## Behaviour
 
 - When reading a cache key, try reading from the first level first, then go down
@@ -60,7 +64,7 @@ From thereon,
 
 - `Rails.cache.read` and `.fetch` will read from `L1` and fall back to `L2` if
   the key is absent from `L1`.
-  When reading from `L2`, `L1` will get populated automatically on misses.
+- On L1 misses and L2 hits, L1 will be populated.
 - `Rails.cache.write` and `.fetch` will write to both stores.
 
 While discouraged, it is possible to write directly to a given cache level:
