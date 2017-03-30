@@ -110,24 +110,33 @@ describe ActiveSupport::Cache::Level2 do
         end
       end
 
-      it 'notifies' do
-        subject.read('foo')
-        expect(events.length).to eq 1
+      context 'on miss' do
+        before { subject.read('foo') }
+
+        it { expect(events.length).to eq 1 }
+        it { expect(events.first.payload[:hit]).to eq false }
       end
 
-      context 'hits' do
-        it 'sets the :level event attribute' do
-          level2.write('foo', 'bar')
-          subject.read('foo')
-          expect(events.last.payload[:level]).to eq :L2
+      context 'on first hit' do
+        before { level2.write('foo', 'bar') }
+        before { subject.read('foo') }
 
-          subject.read('foo')
-          expect(events.last.payload[:level]).to eq :L1
-        end
+        it { expect(events.last.payload[:level]).to eq :L2 }
+        it { expect(events.last.payload[:hit]).to eq true }
+      end
+
+      context 'on second hit' do
+        before { level2.write('foo', 'bar') }
+        before { 2.times { subject.read('foo') } }
+
+        it { expect(events.last.payload[:level]).to eq :L1 }
+        it { expect(events.last.payload[:hit]).to eq true }
       end
     end
 
     describe '#write' do
+      let(:perform) { subject.write('foo', 'bar') }
+
       before do
         ActiveSupport::Notifications.subscribe('cache_write.active_support') do |*args|
           events << ActiveSupport::Notifications::Event.new(*args)
@@ -135,11 +144,11 @@ describe ActiveSupport::Cache::Level2 do
       end
 
       it 'notifies' do
-        subject.write('foo', 'bar')
+        perform
         expect(events.length).to eq 1
       end
     end
   end
   
-
+  # it { binding.pry }
 end
