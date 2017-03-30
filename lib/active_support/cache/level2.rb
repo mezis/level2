@@ -90,7 +90,10 @@ module ActiveSupport
         return entry if entry.present?
 
         entry = read_entry_from(other_stores, key, options)
-        return nil unless entry.present?
+        unless entry.present?
+          current_level! :all
+          return
+        end
         store.send :write_entry, key, entry, {}
         
         entry
@@ -98,8 +101,13 @@ module ActiveSupport
 
       def selected_stores(options)
         only = options[:only]
-        return @stores if only.nil?
-        @stores.select { |name,_| name == only }
+        if only.nil?
+          current_level! :all
+          @stores
+        else
+          current_level! only
+          @stores.select { |name,_| name == only }
+        end
       end
 
     end

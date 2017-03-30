@@ -113,24 +113,43 @@ describe ActiveSupport::Cache::Level2 do
       context 'on miss' do
         before { subject.read('foo') }
 
-        it { expect(events.length).to eq 1 }
-        it { expect(events.first.payload[:hit]).to eq false }
+        it 'notifies' do
+          expect(events.length).to eq 1
+        end
+
+        it 'tags the event' do
+          expect(events.last.payload[:level]).to eq :all
+        end
+        
+        it 'labels as a miss' do
+          expect(events.last.payload[:hit]).to eq false
+        end
       end
 
       context 'on first hit' do
         before { level2.write('foo', 'bar') }
         before { subject.read('foo') }
 
-        it { expect(events.last.payload[:level]).to eq :L2 }
-        it { expect(events.last.payload[:hit]).to eq true }
+        it 'tags the event' do
+          expect(events.last.payload[:level]).to eq :L2
+        end
+        
+        it 'labels as a hit' do
+          expect(events.last.payload[:hit]).to eq true
+        end
       end
 
       context 'on second hit' do
         before { level2.write('foo', 'bar') }
         before { 2.times { subject.read('foo') } }
 
-        it { expect(events.last.payload[:level]).to eq :L1 }
-        it { expect(events.last.payload[:hit]).to eq true }
+        it 'tags the event' do
+          expect(events.last.payload[:level]).to eq :L1
+        end
+        
+        it 'labels as a hit' do
+          expect(events.last.payload[:hit]).to eq true
+        end
       end
     end
 
@@ -144,8 +163,12 @@ describe ActiveSupport::Cache::Level2 do
       end
 
       it 'notifies' do
+        expect { perform }.to change { events.length }.by 1
+      end
+
+      it 'tags the event' do
         perform
-        expect(events.length).to eq 1
+        expect(events.first.payload[:level]).to eq(:all)
       end
     end
   end
@@ -163,6 +186,4 @@ describe ActiveSupport::Cache::Level2 do
       expect(subject.read_multi('a', 'b', 'c', 'd')).to eq('a' => 'a1', 'b' => 'b1', 'c' => 'c2')
     end
   end
-  
-  # it { binding.pry }
 end
