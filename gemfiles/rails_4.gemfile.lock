@@ -1,14 +1,16 @@
 PATH
-  remote: .
+  remote: ..
   specs:
     level2 (0.2.6)
 
 GEM
   remote: https://rubygems.org/
   specs:
-    activesupport (3.2.22.5)
-      i18n (~> 0.6, >= 0.6.4)
-      multi_json (~> 1.0)
+    activesupport (4.2.8)
+      i18n (~> 0.7)
+      minitest (~> 5.1)
+      thread_safe (~> 0.3, >= 0.3.4)
+      tzinfo (~> 1.1)
     appraisal (2.1.0)
       bundler
       rake
@@ -38,7 +40,7 @@ GEM
       ruby_dep (~> 1.2)
     lumberjack (1.0.11)
     method_source (0.8.2)
-    multi_json (1.12.1)
+    minitest (5.10.1)
     nenv (0.3.0)
     notiffany (0.1.1)
       nenv (~> 0.1)
@@ -68,12 +70,15 @@ GEM
     shellany (0.0.1)
     slop (3.6.0)
     thor (0.19.4)
+    thread_safe (0.3.6)
+    tzinfo (1.2.3)
+      thread_safe (~> 0.1)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
-  activesupport (~> 3)
+  activesupport (~> 4)
   appraisal
   bundler
   guard-rspec

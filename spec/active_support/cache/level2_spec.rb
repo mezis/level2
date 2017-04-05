@@ -1,5 +1,6 @@
 require 'spec_helper'
 require 'active_support/cache/level2'
+require 'active_support/notifications'
 require 'pry'
 
 describe ActiveSupport::Cache::Level2 do
@@ -109,24 +110,52 @@ describe ActiveSupport::Cache::Level2 do
         end
       end
 
-      it 'notifies' do
-        subject.read('foo')
-        expect(events.length).to eq 1
+      context 'on miss' do
+        before { subject.read('foo') }
+
+        it 'notifies' do
+          expect(events.length).to eq 1
+        end
+
+        it 'tags the event' do
+          expect(events.last.payload[:level]).to eq :all
+        end
+        
+        it 'labels as a miss' do
+          expect(events.last.payload[:hit]).to eq false
+        end
       end
 
-      context 'hits' do
-        it 'sets the :level event attribute' do
-          level2.write('foo', 'bar')
-          subject.read('foo')
-          expect(events.last.payload[:level]).to eq :L2
+      context 'on first hit' do
+        before { level2.write('foo', 'bar') }
+        before { subject.read('foo') }
 
-          subject.read('foo')
+        it 'tags the event' do
+          expect(events.last.payload[:level]).to eq :L2
+        end
+        
+        it 'labels as a hit' do
+          expect(events.last.payload[:hit]).to eq true
+        end
+      end
+
+      context 'on second hit' do
+        before { level2.write('foo', 'bar') }
+        before { 2.times { subject.read('foo') } }
+
+        it 'tags the event' do
           expect(events.last.payload[:level]).to eq :L1
+        end
+        
+        it 'labels as a hit' do
+          expect(events.last.payload[:hit]).to eq true
         end
       end
     end
 
     describe '#write' do
+      let(:perform) { subject.write('foo', 'bar') }
+
       before do
         ActiveSupport::Notifications.subscribe('cache_write.active_support') do |*args|
           events << ActiveSupport::Notifications::Event.new(*args)
@@ -134,11 +163,27 @@ describe ActiveSupport::Cache::Level2 do
       end
 
       it 'notifies' do
-        subject.write('foo', 'bar')
-        expect(events.length).to eq 1
+        expect { perform }.to change { events.length }.by 1
+      end
+
+      it 'tags the event' do
+        perform
+        expect(events.first.payload[:level]).to eq(:all)
       end
     end
   end
-  
 
+
+  describe '#read_multi' do
+    before do
+      subject.write('a', 'a1', only: :L1)
+      subject.write('a', 'a2', only: :L2)
+      subject.write('b', 'b1', only: :L1)
+      subject.write('c', 'c2', only: :L2)
+    end
+
+    it 'mass-reads data from each store' do
+      expect(subject.read_multi('a', 'b', 'c', 'd')).to eq('a' => 'a1', 'b' => 'b1', 'c' => 'c2')
+    end
+  end
 end

@@ -1,5 +1,5 @@
 PATH
-  remote: .
+  remote: ..
   specs:
     level2 (0.2.6)
 

@@ -1,12 +1,17 @@
 require 'active_support/cache'
 
+require 'active_support/version'
+if ActiveSupport::VERSION::MAJOR == 3
+  # active_support/cache actually depends on this but doesn't require it:
+  require 'securerandom'
+end
+
 module ActiveSupport
   module Cache
     class Level2 < Store
       attr_reader :stores
 
       def initialize(store_options)
-        @lock = Mutex.new
         @stores = store_options.each_with_object({}) do |(name,options), h|
           h[name] = ActiveSupport::Cache.lookup_store(options)
         end
@@ -14,15 +19,26 @@ module ActiveSupport
       end
 
       def cleanup(*args)
-        @lock.synchronize do
-          @stores.each_value { |s| s.cleanup(*args) }
-        end
+        @stores.each_value { |s| s.cleanup(*args) }
       end
 
       def clear(*args)
-        @lock.synchronize do
-          @stores.each_value { |s| s.clear(*args) }
+        @stores.each_value { |s| s.clear(*args) }
+      end
+
+      def read_multi(*names)
+        result = {}
+        @stores.each do |_name,store|
+          data = store.read_multi(*names)
+          result.merge! data
+          names -= data.keys
         end
+        result
+      end
+
+      # Rails 3 doesn't instrument by default, this overrides it
+      def self.instrument
+        true
       end
 
       protected
@@ -37,29 +53,22 @@ module ActiveSupport
 
       def read_entry(key, options)
         stores = selected_stores(options)
-        @lock.synchronize do
-          read_entry_from(stores, key, options)
-        end
+        read_entry_from(stores, key, options)
       end
 
       def write_entry(key, entry, options)
         stores = selected_stores(options)
-        @lock.synchronize do
-          stores.each do |name, store|
-            result = store.send :write_entry, key, entry, options
-            return false unless result
-          end
-          true
+        stores.each do |name, store|
+          result = store.send :write_entry, key, entry, options
+          return false unless result
         end
       end
 
       def delete_entry(key, options)
         selected_stores(options)
-        @lock.synchronize do
-          stores.map { |name,store|
-            store.send :delete_entry, key, options
-          }.all?
-        end
+        stores.map { |name,store|
+          store.send :delete_entry, key, options
+        }.all?
       end
 
       private
@@ -81,7 +90,10 @@ module ActiveSupport
         return entry if entry.present?
 
         entry = read_entry_from(other_stores, key, options)
-        return nil unless entry.present?
+        unless entry.present?
+          current_level! :all
+          return
+        end
         store.send :write_entry, key, entry, {}
         
         entry
@@ -89,8 +101,13 @@ module ActiveSupport
 
       def selected_stores(options)
         only = options[:only]
-        return @stores if only.nil?
-        @stores.select { |name,_| name == only }
+        if only.nil?
+          current_level! :all
+          @stores
+        else
+          current_level! only
+          @stores.select { |name,_| name == only }
+        end
       end
 
     end
