@@ -2,10 +2,12 @@ require 'spec_helper'
 require 'active_support/cache/level2'
 require 'active_support/notifications'
 require 'pry'
+require 'timecop'
 
 describe ActiveSupport::Cache::Level2 do
   subject do
     ActiveSupport::Cache.lookup_store :level2,
+      name: 'SomeName',
       L1: [
         :memory_store, { size: 10.megabytes }
       ],
@@ -101,57 +103,49 @@ describe ActiveSupport::Cache::Level2 do
 
   describe 'notifications' do
     after { ActiveSupport::Notifications.unsubscribe(//) }
-    let(:events) { [] }
+    let(:events) { Hash.new{|h,k| h[k] = []} }
 
-    describe '#read' do
-      before do
-        ActiveSupport::Notifications.subscribe(//) do |*args|
-          binding.pry
-        end
-        ActiveSupport::Notifications.subscribe('cache_read.active_support') do |*args|
-          events << ActiveSupport::Notifications::Event.new(*args)
-        end
+    before do
+      ActiveSupport::Notifications.subscribe( /multi_layer_cache./) do |*args|
+        event = ActiveSupport::Notifications::Event.new(*args)
+        events[event.name.split('.').last] << event
       end
+    end
 
-      context 'on miss' do
-        before { subject.read('foo') }
+    it 'notifies' do
+      expect { subject.read('foo') }.to change {
+        events['miss'].map(&:payload)
+      } .to contain_exactly(
+        include(store_name: 'SomeName', cache_name: :L1, cache: an_instance_of(ActiveSupport::Cache::MemoryStore)),
+        include(store_name: 'SomeName',cache_name: :L2, cache: an_instance_of(ActiveSupport::Cache::MemoryStore))
+      )
+    end
 
-        it 'notifies' do
-          expect(events.length).to eq 1
-        end
-
-        it 'tags the event' do
-          expect(events.last.payload[:level]).to eq :all
-        end
-
-        it 'labels as a miss' do
-          expect(events.last.payload[:hit]).to eq false
-        end
+    context 'on miss on only top levels' do
+      it 'notifies' do
+        expect {
+          level2.write('foo', 123)
+          subject.read('foo')
+        }.to change {
+          events['miss'].map(&:payload)
+        }.to(include(a_hash_including(store_name: 'SomeName', cache_name: :L1, cache: an_instance_of(ActiveSupport::Cache::MemoryStore))))
+          .and change {
+          events['hit'].map(&:payload)
+        }.to(include(a_hash_including(store_name: 'SomeName', cache_name: :L2, cache: an_instance_of(ActiveSupport::Cache::MemoryStore))))
       end
+    end
 
-      context 'on first hit' do
-        before { level2.write('foo', 'bar') }
-        before { subject.read('foo') }
+    context 'when the hit is expired' do
+      it 'records the expired_hit' do
+        Timecop.freeze do
+          subject.write('foo', 123, expires_in: 2.seconds)
+          Timecop.travel(Time.now.to_i + 10)
 
-        it 'tags the event' do
-          expect(events.last.payload[:level]).to eq :L2
-        end
-
-        it 'labels as a hit' do
-          expect(events.last.payload[:hit]).to eq true
-        end
-      end
-
-      context 'on second hit' do
-        before { level2.write('foo', 'bar') }
-        before { 2.times { subject.read('foo') } }
-
-        it 'tags the event' do
-          expect(events.last.payload[:level]).to eq :L1
-        end
-
-        it 'labels as a hit' do
-          expect(events.last.payload[:hit]).to eq true
+          expect {
+            subject.read('foo')
+          }.to change {
+            events['expired_hit'].map(&:payload)
+          }.to(include(a_hash_including(store_name: 'SomeName', cache_name: :L1, cache: an_instance_of(ActiveSupport::Cache::MemoryStore))))
         end
       end
     end
@@ -159,19 +153,39 @@ describe ActiveSupport::Cache::Level2 do
     describe '#write' do
       let(:perform) { subject.write('foo', 'bar') }
 
-      before do
-        ActiveSupport::Notifications.subscribe('cache_write.active_support') do |*args|
-          events << ActiveSupport::Notifications::Event.new(*args)
-        end
+      it 'notifies' do
+        expect { perform }.to change {
+          events['write'].map(&:payload)
+        }.to(include(
+          a_hash_including(store_name: 'SomeName', cache_name: :L1),
+          a_hash_including(store_name: 'SomeName', cache_name: :L2)
+        ))
       end
+    end
+
+    describe '#delete' do
+      let(:perform) { subject.delete('foo') }
 
       it 'notifies' do
-        expect { perform }.to change { events.length }.by 1
+        expect { perform }.to change {
+          events['delete'].map(&:payload)
+        }.to(include(
+          a_hash_including(store_name: 'SomeName', cache_name: :L1),
+          a_hash_including(store_name: 'SomeName', cache_name: :L2)
+        ))
       end
+    end
 
-      it 'tags the event' do
-        perform
-        expect(events.first.payload[:level]).to eq(:all)
+    describe '#read' do
+      let(:perform) { subject.read('foo') }
+
+      it 'notifies' do
+        expect { perform }.to change {
+          events['read'].map(&:payload)
+        }.to(include(
+          a_hash_including(store_name: 'SomeName', cache_name: :L1),
+          a_hash_including(store_name: 'SomeName', cache_name: :L2)
+        ))
       end
     end
   end
