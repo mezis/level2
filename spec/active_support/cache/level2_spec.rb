@@ -105,6 +105,9 @@ describe ActiveSupport::Cache::Level2 do
 
     describe '#read' do
       before do
+        ActiveSupport::Notifications.subscribe(//) do |*args|
+          binding.pry
+        end
         ActiveSupport::Notifications.subscribe('cache_read.active_support') do |*args|
           events << ActiveSupport::Notifications::Event.new(*args)
         end
@@ -120,7 +123,7 @@ describe ActiveSupport::Cache::Level2 do
         it 'tags the event' do
           expect(events.last.payload[:level]).to eq :all
         end
-        
+
         it 'labels as a miss' do
           expect(events.last.payload[:hit]).to eq false
         end
@@ -133,7 +136,7 @@ describe ActiveSupport::Cache::Level2 do
         it 'tags the event' do
           expect(events.last.payload[:level]).to eq :L2
         end
-        
+
         it 'labels as a hit' do
           expect(events.last.payload[:hit]).to eq true
         end
@@ -146,7 +149,7 @@ describe ActiveSupport::Cache::Level2 do
         it 'tags the event' do
           expect(events.last.payload[:level]).to eq :L1
         end
-        
+
         it 'labels as a hit' do
           expect(events.last.payload[:hit]).to eq true
         end

@@ -51,6 +51,7 @@ GEM
     rb-fsevent (0.9.8)
     rb-inotify (0.9.8)
       ffi (>= 0.5.0)
+    rb-readline (0.5.5)
     rspec (3.5.0)
       rspec-core (~> 3.5.0)
       rspec-expectations (~> 3.5.0)
@@ -71,6 +72,7 @@ GEM
 
 PLATFORMS
   ruby
+  x86_64-darwin-17
 
 DEPENDENCIES
   activesupport (~> 3)
@@ -80,7 +82,8 @@ DEPENDENCIES
   level2!
   pry
   rake
+  rb-readline
   rspec
 
 BUNDLED WITH
-   1.14.6
+   1.16.1
