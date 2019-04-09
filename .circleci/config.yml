@@ -1,0 +1,75 @@
+# Ruby CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-ruby/ for more details
+#
+version: 2
+
+workflows:
+  version: 2
+  commit:
+    jobs:
+      - ruby-2.6
+      - ruby-2.5
+
+jobs:
+  "ruby-2.6":
+    docker:
+      # specify the version you desire here
+      - image: ruby:2.6
+
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-dependencies-2.6-{{ checksum "Gemfile.lock" }}
+            - v1-dependencies-2.6-
+      - run:
+          name: install dependencies
+          command: |
+            bundle install --jobs=4 --retry=3 --path vendor/bundle
+            bundle exec appraisal install
+      - save_cache:
+          paths:
+            - ./vendor/bundle
+          key: v1-dependencies-2.6-{{ checksum "Gemfile.lock" }}
+      # run tests!
+      - run:
+          name: run tests
+          command: bundle exec appraisal rspec
+      # collect reports
+      - store_test_results:
+          path: /tmp/test-results
+      - store_artifacts:
+          path: /tmp/test-results
+          destination: test-results
+  "ruby-2.5":
+    docker:
+      # specify the version you desire here
+      - image: ruby:2.5
+      - image: amazon/dynamodb-local
+
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-dependencies-2.5-{{ checksum "Gemfile.lock" }}
+            - v1-dependencies-2.5-
+      - run:
+          name: install dependencies
+          command: |
+            bundle install --jobs=4 --retry=3 --path vendor/bundle
+            bundle exec appraisal install
+      - save_cache:
+          paths:
+            - ./vendor/bundle
+          key: v1-dependencies-2.5-{{ checksum "Gemfile.lock" }}
+      # run tests!
+      - run:
+          name: run tests
+          command: bundle exec appraisal rspec
+      # collect reports
+      - store_test_results:
+          path: /tmp/test-results
+      - store_artifacts:
+          path: /tmp/test-results
+          destination: test-results

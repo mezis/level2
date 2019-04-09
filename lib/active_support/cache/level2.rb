@@ -9,13 +9,20 @@ end
 module ActiveSupport
   module Cache
     class Level2 < Store
-      attr_reader :stores
+      attr_reader :stores, :store_name
 
       def initialize(store_options)
+        @store_name = store_options.delete(:name) || ''
         @stores = store_options.each_with_object({}) do |(name,options), h|
           h[name] = ActiveSupport::Cache.lookup_store(options)
         end
-        @options = {}
+        provided_namespace = store_options[:namespace]
+        store_options[:namespace] = proc do
+          provided = provided_namespace.is_a?(Proc) ? provided_namespace.call : ''
+          @store_name + ':' + provided
+        end
+
+        super(store_options)
       end
 
       def cleanup(*args)
@@ -26,30 +33,7 @@ module ActiveSupport
         @stores.each_value { |s| s.clear(*args) }
       end
 
-      def read_multi(*names)
-        result = {}
-        @stores.each do |_name,store|
-          data = store.read_multi(*names)
-          result.merge! data
-          names -= data.keys
-        end
-        result
-      end
-
-      # Rails 3 doesn't instrument by default, this overrides it
-      def self.instrument
-        true
-      end
-
       protected
-
-      def instrument(operation, key, options = nil)
-        super(operation, key, options) do |payload|
-          yield(payload).tap do
-            payload[:level] = current_level if payload
-          end
-        end
-      end
 
       def read_entry(key, options)
         stores = selected_stores(options)
@@ -57,59 +41,80 @@ module ActiveSupport
       end
 
       def write_entry(key, entry, options)
-        stores = selected_stores(options)
-        stores.each do |name, store|
-          result = store.send :write_entry, key, entry, options
-          return false unless result
+        in_each_store(selected_stores(options)) do |name, store|
+          record_event(:write, cache_name: name) do
+            !!store.send(:write_entry, key, entry, options)
+          end
         end
       end
 
       def delete_entry(key, options)
-        selected_stores(options)
-        stores.map { |name,store|
-          store.send :delete_entry, key, options
-        }.all?
+        selected_stores(options).each do |name, store|
+          record_event(:delete, cache_name: name) do
+            store.send :delete_entry, key, options
+          end
+        end
       end
 
       private
 
-      def current_level
-        Thread.current[:level2_current]
-      end
-
-      def current_level!(name)
-        Thread.current[:level2_current] = name
+      def in_each_store(stores)
+        stores.collect do |name, store|
+          Thread.new { yield name, store }
+        end.map(&:value)
       end
 
       def read_entry_from(stores, key, options)
         return if stores.empty?
 
-        (name,store), *other_stores = stores.to_a
-        current_level! name
-        entry = store.send :read_entry, key, options
-        return entry if entry.present?
+        stores_without_entry = []
 
-        entry = read_entry_from(other_stores, key, options)
-        unless entry.present?
-          current_level! :all
-          return
+        entry = stores.lazy.map do |name, store|
+          record_event(:read, cache_name: name) do
+            entry = store.send :read_entry, key, options
+          end
+
+          if entry
+            record_event(entry.expired? ? :expired_hit : :hit, cache_name: name)
+            entry
+          else
+            record_event(:miss, cache_name: name)
+            stores_without_entry << name
+            nil
+          end
+        end.detect(&:itself)
+
+        return unless entry
+
+        unless stores_without_entry.empty?
+          write_entry(key, entry, options.merge(only: stores_without_entry))
         end
-        store.send :write_entry, key, entry, {}
-        
+
         entry
+      end
+
+      def record_event(event, cache_name:, &blk)
+        ActiveSupport::Notifications.instrument(
+          "multi_layer_cache.#{event}",
+          {
+            store_name: store_name,
+            cache_name: cache_name,
+            cache: @stores[cache_name]
+          },
+          &blk
+        )
       end
 
       def selected_stores(options)
         only = options[:only]
+
         if only.nil?
-          current_level! :all
           @stores
         else
-          current_level! only
-          @stores.select { |name,_| name == only }
+          only = [only] unless only.is_a?(Array)
+          @stores.select { |name, _| only.include?(name) }
         end
       end
-
     end
   end
 end

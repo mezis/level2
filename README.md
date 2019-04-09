@@ -80,24 +80,23 @@ ability to bust the cache manually.
 
 ## Notifications
 
-Level2 enriches
-[`ActiveSupport::Notifications`](http://edgeguides.rubyonrails.org/active_support_instrumentation.html#active-support).
+Notifications are sent for every action taking on each cache layer of the cache.
 
-Event payloads will include a `:level` field. On cache hits, this will indicate
-where the hit comes from; on misses, or any other event, the field may be
-present but the value is unspecified.
+All actions can be subscribed to  using an ActiveSupport::Notification
+subscription using the pattern `multi_layer_cache.event_type`. All events
+contain the Store Name (provided at construction), the layer name, and the
+cache instance itself.
 
-Example:
 
-```ruby
-# in an initializer
-ActiveSupport::Notifications.subscribe 'cache_read.active_support' do |*args|
-  event = ActiveSupport::Notifications::Event.new(*args)
-  if event.payload[:hit]
-    Rails.logger.info "Hit from #{event.payload[:level]}"
-  end
-end
-```
+| Action      | Timed | Description                                                                      |
+|-------------|-------|----------------------------------------------------------------------------------|
+| read        | Yes   | Called when reading from a cache layer                                           |
+| write       | Yes   | Called when writing to a cache layer                                             |
+| hit         | No    | Called when a cache layer has a hit after read                                   |
+| miss        | No    | Called when a cache layer has a miss after read                                  |
+| expired_hit | No    | Called when a cache layer has a hit after read, but the entry is already expired |
+| delete      | Yes   | Called on every layer when a record is removed                                   |
+
 
 ## Development
 
