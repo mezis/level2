@@ -12,7 +12,7 @@ module ActiveSupport
       attr_reader :stores, :store_name
 
       def initialize(store_options)
-        @store_name = store_options.delete(:name)
+        @store_name = store_options.delete(:name) || ''
         @stores = store_options.each_with_object({}) do |(name,options), h|
           h[name] = ActiveSupport::Cache.lookup_store(options)
         end
