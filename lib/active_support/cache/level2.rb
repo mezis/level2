@@ -42,17 +42,13 @@ module ActiveSupport
 
       def write_entry(key, entry, options)
         in_each_store(selected_stores(options)) do |name, store|
-          record_event(:write, cache_name: name) do
-            !!store.send(:write_entry, key, entry, options)
-          end
+          !!store.send(:write_entry, key, entry, **options)
         end
       end
 
       def delete_entry(key, options)
         selected_stores(options).each do |name, store|
-          record_event(:delete, cache_name: name) do
-            store.send :delete_entry, key, options
-          end
+          store.send :delete_entry, key, **options
         end
       end
 
@@ -70,15 +66,11 @@ module ActiveSupport
         stores_without_entry = []
 
         entry = stores.lazy.map do |name, store|
-          record_event(:read, cache_name: name) do
-            entry = store.send :read_entry, key, options
-          end
+          entry = store.send :read_entry, key, **options
 
           if entry
-            record_event(entry.expired? ? :expired_hit : :hit, cache_name: name)
             entry
           else
-            record_event(:miss, cache_name: name)
             stores_without_entry << name
             nil
           end
@@ -91,18 +83,6 @@ module ActiveSupport
         end
 
         entry
-      end
-
-      def record_event(event, cache_name:, &blk)
-        ActiveSupport::Notifications.instrument(
-          "multi_layer_cache.#{event}",
-          {
-            store_name: store_name,
-            cache_name: cache_name,
-            cache: @stores[cache_name]
-          },
-          &blk
-        )
       end
 
       def selected_stores(options)

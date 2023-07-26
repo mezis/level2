@@ -1,12 +1,4 @@
-appraise 'rails-5.0' do
-  gem 'activesupport', '~> 5.0'
-end
-
-appraise 'rails-5.1' do
-  gem 'activesupport', '~> 5.1'
-end
-
-appraise 'rails-5.2' do
-  gem 'activesupport', '~> 5.2'
+appraise 'rails-7.0' do
+  gem 'activesupport', '~> 7.0'
 end
 
